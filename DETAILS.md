@@ -40,8 +40,8 @@ Issues and pull requests are welcome.
 ## Running by hand
 
 ```sh
-./hc_rex_bridge.py --dry-run   # print what it would do, then exit
-./hc_rex_bridge.py             # sync, then keep syncing until Ctrl-C (use --once to sync and exit)
+./herdrex_bridge.py --dry-run   # print what it would do, then exit
+./herdrex_bridge.py             # sync, then keep syncing until Ctrl-C (use --once to sync and exit)
 ```
 
 Then open the `herdr` session in Rex (`rex ls` lists sessions). With no live hc terminal the bridge
@@ -53,20 +53,42 @@ is untested there.
 ## Run it as a service (systemd)
 
 ```sh
-install -Dm755 hc_rex_bridge.py ~/.local/bin/hc-rex-bridge
-install -Dm644 hc-rex-bridge.service ~/.config/systemd/user/hc-rex-bridge.service
+install -Dm755 herdrex_bridge.py ~/.local/bin/herdrex-bridge
+install -Dm644 herdrex-bridge.service ~/.config/systemd/user/herdrex-bridge.service
 systemctl --user daemon-reload
-systemctl --user enable --now hc-rex-bridge
+systemctl --user enable --now herdrex-bridge
 ```
 
-Logs: `journalctl --user -u hc-rex-bridge -f`. Stop: `systemctl --user disable --now hc-rex-bridge`.
-After a `git pull`, re-run the `install` lines, then `systemctl --user restart hc-rex-bridge`.
+Logs: `journalctl --user -u herdrex-bridge -f`. Stop: `systemctl --user disable --now herdrex-bridge`.
+After a `git pull`, re-run the `install` lines, then `systemctl --user restart herdrex-bridge`.
 
 The unit adds `~/.local/bin` to `PATH`; if `hc` or `rex` live elsewhere, edit its `Environment=PATH=`
 line. If they are missing from `PATH` the service stops with an error instead of restarting forever.
 On a remote or headless machine, everything stops at your last logout unless your user lingers. That
 covers the bridge, the hc core, and a Rex server run as a user service. Check with
 `loginctl show-user $USER -p Linger`; if it says `no`, run `sudo loginctl enable-linger $USER`.
+
+### Switching from the old name (hc-rex-bridge)
+
+This program used to be called `hc-rex-bridge`. An install under the old name keeps working until you
+switch, and the new version moves the old state file for you on its first start, so no windows are
+duplicated. To switch (Linux, systemd):
+
+```sh
+systemctl --user disable --now hc-rex-bridge
+# Only if you made a drop-in (systemctl --user edit):
+mv ~/.config/systemd/user/hc-rex-bridge.service.d ~/.config/systemd/user/herdrex-bridge.service.d
+rm ~/.config/systemd/user/hc-rex-bridge.service ~/.local/bin/hc-rex-bridge
+install -Dm755 herdrex_bridge.py ~/.local/bin/herdrex-bridge
+install -Dm644 herdrex-bridge.service ~/.config/systemd/user/herdrex-bridge.service
+systemctl --user daemon-reload
+systemctl --user enable --now herdrex-bridge
+```
+
+If the drop-in has an `ExecStart=` line, change `hc-rex-bridge` to `herdrex-bridge` in it. Do not delete
+`~/.local/state/hc-rex-bridge/windows.json`; the bridge moves it to `~/.local/state/herdrex-bridge/`.
+Check with `systemctl --user status herdrex-bridge` and compare `rex window ls -s herdr --json` with
+`hc ls --json`: one window per live terminal. If you run it by hand, just run the new script.
 
 ## Using it from another machine
 
@@ -98,15 +120,15 @@ that, so run one bridge per host.
 | `--dry-run` | Print what would change without touching Rex, then exit. |
 
 For the service, set options in a drop-in so reinstalling the unit does not erase them. Run
-`systemctl --user edit hc-rex-bridge` and enter, for example:
+`systemctl --user edit herdrex-bridge` and enter, for example:
 
 ```ini
 [Service]
 ExecStart=
-ExecStart=/usr/bin/env python3 -I %h/.local/bin/hc-rex-bridge --observe --session work
+ExecStart=/usr/bin/env python3 -I %h/.local/bin/herdrex-bridge --observe --session work
 ```
 
-Saving it restarts nothing, so then run `systemctl --user restart hc-rex-bridge`. To change only the
+Saving it restarts nothing, so then run `systemctl --user restart herdrex-bridge`. To change only the
 session name, `Environment=HERDREX_SESSION=work` in the drop-in is enough.
 
 After changing `--observe` or `--session`, stop the bridge, close the Rex session
@@ -122,7 +144,7 @@ leaves the old session behind; close that yourself.
 - **A window you close by hand stays closed** until the bridge restarts. Close the whole Rex session
   instead and the bridge rebuilds it, with every live terminal, the next time hc reports a terminal
   starting, ending or being renamed (or when the bridge restarts).
-- **State** lives in `$XDG_STATE_HOME/hc-rex-bridge/windows.json` (default `~/.local/state/...`) and
+- **State** lives in `$XDG_STATE_HOME/herdrex-bridge/windows.json` (default `~/.local/state/...`) and
   maps terminals to windows. If you delete it, close the Rex session first or you will get duplicate windows.
 
 ## Development

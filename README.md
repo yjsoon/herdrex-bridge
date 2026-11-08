@@ -2,7 +2,7 @@
 
 Show your [hc](https://herdr.dev/core/) (herdr-core) terminals inside [Rex](https://superlogical.com).
 Every live hc terminal becomes a Rex window you can watch and type into, so the agents the Herdr app
-shows are reachable from any Rex client. (Installs as `hc-rex-bridge`.)
+shows are reachable from any Rex client.
 
 ![The Rex app showing the herdr session, one window per hc terminal](docs/rex-herdr-session.jpg)
 
@@ -29,8 +29,8 @@ waitlist beta (November 2026); see [DETAILS.md](DETAILS.md#requirements).
 
 ```sh
 git clone https://github.com/yjsoon/herdrex-bridge && cd herdrex-bridge
-./hc_rex_bridge.py --dry-run   # print what it would do, then exit
-./hc_rex_bridge.py             # keep syncing until Ctrl-C
+./herdrex_bridge.py --dry-run   # print what it would do, then exit
+./herdrex_bridge.py             # keep syncing until Ctrl-C
 ```
 
 Then open the `herdr` session in Rex. It appears with the first live hc terminal.
@@ -38,10 +38,10 @@ Then open the `herdr` session in Rex. It appears with the first live hc terminal
 ## Run it as a service (Linux, systemd)
 
 ```sh
-install -Dm755 hc_rex_bridge.py ~/.local/bin/hc-rex-bridge
-install -Dm644 hc-rex-bridge.service ~/.config/systemd/user/hc-rex-bridge.service
+install -Dm755 herdrex_bridge.py ~/.local/bin/herdrex-bridge
+install -Dm644 herdrex-bridge.service ~/.config/systemd/user/herdrex-bridge.service
 systemctl --user daemon-reload
-systemctl --user enable --now hc-rex-bridge
+systemctl --user enable --now herdrex-bridge
 ```
 
 To use it from another machine, run the bridge on the machine that hosts the hc terminals and

@@ -1,4 +1,4 @@
-"""Unit tests for the pure logic in hc_rex_bridge. Run: python3 -m unittest -v"""
+"""Unit tests for the pure logic in herdrex_bridge. Run: python3 -m unittest -v"""
 import argparse
 import importlib.util
 import json
@@ -6,8 +6,8 @@ import pathlib
 import unittest
 from unittest import mock
 
-_path = pathlib.Path(__file__).resolve().parent.parent / "hc_rex_bridge.py"
-_spec = importlib.util.spec_from_file_location("hc_rex_bridge", _path)
+_path = pathlib.Path(__file__).resolve().parent.parent / "herdrex_bridge.py"
+_spec = importlib.util.spec_from_file_location("herdrex_bridge", _path)
 bridge = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(bridge)
 
@@ -197,6 +197,54 @@ class Reconcile(unittest.TestCase):
             del fake.terminals["t2"]
             b.reconcile()
         self.assertEqual(sorted(fake.windows.values()), ["a / 1"])
+
+
+class LegacyState(unittest.TestCase):
+    """The state file used to live under hc-rex-bridge; losing it duplicates every window."""
+
+    def setUp(self):
+        import os, tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.new = os.path.join(self.tmp.name, "herdrex-bridge", "windows.json")
+        self.old = os.path.join(self.tmp.name, "hc-rex-bridge", "windows.json")
+        for target in ("STATE", "LEGACY_STATE"):
+            p = mock.patch.object(bridge, target, self.new if target == "STATE" else self.old)
+            p.start()
+            self.addCleanup(p.stop)
+
+    def write(self, path, data):
+        import os
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(data, f)
+
+    def test_moves_old_file_when_new_is_missing(self):
+        import os
+        self.write(self.old, {"t1": "w1"})
+        bridge.migrate_legacy_state()
+        self.assertEqual(bridge.load_state(), {"t1": "w1"})
+        self.assertTrue(os.path.exists(self.new))
+        self.assertFalse(os.path.exists(self.old))
+        self.assertFalse(os.path.exists(os.path.dirname(self.old)))
+
+    def test_keeps_new_file_when_both_exist(self):
+        import os
+        self.write(self.old, {"t1": "old"})
+        self.write(self.new, {"t1": "new"})
+        bridge.migrate_legacy_state()
+        self.assertEqual(bridge.load_state(), {"t1": "new"})
+        self.assertTrue(os.path.exists(self.old))
+
+    def test_nothing_to_do_without_old_file(self):
+        bridge.migrate_legacy_state()
+        self.assertEqual(bridge.load_state(), {})
+
+    def test_load_state_reads_old_file_without_moving_it(self):
+        import os
+        self.write(self.old, {"t1": "w1"})
+        self.assertEqual(bridge.load_state(), {"t1": "w1"})
+        self.assertTrue(os.path.exists(self.old))
 
 
 class Cli(unittest.TestCase):

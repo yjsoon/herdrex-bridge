@@ -11,7 +11,7 @@ terminal ends.
 The bridge reacts to `hc events`, so it never polls. It only calls the `hc` and
 `rex` command-line tools; it does not touch either program's files or sockets.
 
-Usage: hc_rex_bridge.py [--observe] [--once] [--dry-run] [--session NAME]
+Usage: herdrex_bridge.py [--observe] [--once] [--dry-run] [--session NAME]
 The session name can also be set with the HERDREX_SESSION environment variable.
 """
 import argparse
@@ -30,10 +30,10 @@ RELEVANT_EVENTS = {"created", "finished", "labels"}
 EXIT_CONFIG = 78  # sysexits.h EX_CONFIG: a setup problem, so retrying cannot help
 
 # Remembers which Rex window mirrors which hc terminal across restarts.
-STATE = os.path.join(
-    os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")),
-    "hc-rex-bridge", "windows.json",
-)
+_STATE_HOME = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+STATE = os.path.join(_STATE_HOME, "herdrex-bridge", "windows.json")
+# Where this program kept it when it was called hc-rex-bridge.
+LEGACY_STATE = os.path.join(_STATE_HOME, "hc-rex-bridge", "windows.json")
 
 
 def run(*cmd, check=True):
@@ -99,12 +99,31 @@ def sort_windows(session):
             current.insert(i, (wid, label))
 
 
-def load_state():
+def migrate_legacy_state():
+    """Move the state file from the old hc-rex-bridge folder if the new one is missing.
+
+    Losing the file would make the bridge create a second Rex window for every terminal.
+    """
+    if os.path.exists(STATE) or not os.path.exists(LEGACY_STATE):
+        return
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    shutil.move(LEGACY_STATE, STATE)
     try:
-        with open(STATE) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return {}
+        os.rmdir(os.path.dirname(LEGACY_STATE))  # only succeeds if now empty
+    except OSError:
+        pass
+    log(f"moved state from {LEGACY_STATE} to {STATE}")
+
+
+def load_state():
+    # A dry run does not migrate, so it reads the old file to report accurately.
+    for path in (STATE, LEGACY_STATE):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            continue
+    return {}
 
 
 def save_state(state):
@@ -234,6 +253,8 @@ def main():
         # 78 (EX_CONFIG) tells the systemd unit not to restart-loop on this.
         print(f"{' and '.join(missing)} not found on PATH", file=sys.stderr)
         sys.exit(EXIT_CONFIG)
+    if not args.dry_run:
+        migrate_legacy_state()
     try:
         Bridge(args).follow()
     except KeyboardInterrupt:

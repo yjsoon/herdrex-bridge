@@ -9,7 +9,7 @@ After=rex.service
 # and the leading "-" lets the bridge start anyway if this fails.
 ExecStartPre=-/usr/bin/env hc server start
 # -I makes Python ignore PYTHON* variables and the current directory.
-ExecStart=/usr/bin/env python3 -I %h/.local/bin/hc-rex-bridge
+ExecStart=/usr/bin/env python3 -I %h/.local/bin/herdrex-bridge
 # hc and rex are usually installed in ~/.local/bin, which systemd does not put on PATH.
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
 Restart=on-failure
