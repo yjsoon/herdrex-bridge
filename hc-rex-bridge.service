@@ -1,0 +1,13 @@
+[Unit]
+Description=Mirror hc terminals as Rex windows
+
+[Service]
+# %h is the user's home directory. See README.md for installation.
+ExecStart=/usr/bin/env python3 -I %h/.local/bin/hc-rex-bridge
+# hc and rex are usually installed in ~/.local/bin, which systemd does not put on PATH.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
