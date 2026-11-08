@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mirror live hc (herdr-core) terminals as windows in a Rex session.
 
-Every live hc terminal gets a window in one Rex session (default "hc") whose
+Every live hc terminal gets a window in one Rex session (default "herdr") whose
 block runs `hc attach <address>`. Window titles come from the terminal's hc
 name, falling back to the "where" label that the Herdr app sets (for example
 "myproject / 1") and then to the working directory's name. Titles follow
@@ -12,6 +12,7 @@ The bridge reacts to `hc events`, so it never polls. It only calls the `hc` and
 `rex` command-line tools; it does not touch either program's files or sockets.
 
 Usage: hc_rex_bridge.py [--observe] [--once] [--dry-run] [--session NAME]
+The session name can also be set with the HERDREX_SESSION environment variable.
 """
 import argparse
 import json
@@ -207,7 +208,9 @@ def main():
                     help="watch only: no typing or resizing (default: interactive)")
     ap.add_argument("--once", action="store_true", help="sync once and exit")
     ap.add_argument("--dry-run", action="store_true", help="print actions only")
-    ap.add_argument("--session", default="hc", help="Rex session that holds the windows")
+    ap.add_argument("--session", default=os.environ.get("HERDREX_SESSION", "herdr"),
+                    help="Rex session that holds the windows "
+                         "(default: $HERDREX_SESSION or 'herdr')")
     args = ap.parse_args()
     try:
         Bridge(args).follow()
