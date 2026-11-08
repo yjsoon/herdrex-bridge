@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -25,6 +26,8 @@ import time
 # hc event types that can change which terminals exist or what they are called.
 # Others (title, status, foreground, size, ...) fire constantly and are ignored.
 RELEVANT_EVENTS = {"created", "finished", "labels"}
+
+EXIT_CONFIG = 78  # sysexits.h EX_CONFIG: a setup problem, so retrying cannot help
 
 # Remembers which Rex window mirrors which hc terminal across restarts.
 STATE = os.path.join(
@@ -218,6 +221,13 @@ def main():
                     help="Rex session that holds the windows "
                          "(default: $HERDREX_SESSION or 'herdr')")
     args = ap.parse_args()
+    if args.dry_run:
+        args.once = True  # a dry run that never exits helps nobody
+    missing = [c for c in ("hc", "rex") if shutil.which(c) is None]
+    if missing:
+        # 78 (EX_CONFIG) tells the systemd unit not to restart-loop on this.
+        print(f"{' and '.join(missing)} not found on PATH", file=sys.stderr)
+        sys.exit(EXIT_CONFIG)
     try:
         Bridge(args).follow()
     except KeyboardInterrupt:

@@ -35,12 +35,13 @@ Issues and pull requests are welcome.
 
 ```sh
 git clone https://github.com/yjsoon/herdrex-bridge && cd herdrex-bridge
-./hc_rex_bridge.py --dry-run   # print what it would do
-./hc_rex_bridge.py             # sync, then keep syncing until Ctrl-C
+./hc_rex_bridge.py --dry-run   # print what it would do, then exit
+./hc_rex_bridge.py             # sync, then keep syncing until Ctrl-C (use --once to sync and exit)
 ```
 
 Then open the `herdr` session in Rex (`rex ls` lists sessions). It is created as soon as one hc
-terminal is live.
+terminal is live. Without systemd (for example on macOS), this by-hand run is the way to use it;
+no launchd file is provided and it is untested there.
 
 ## Run it as a service (systemd)
 
@@ -54,7 +55,8 @@ systemctl --user enable --now hc-rex-bridge
 Logs: `journalctl --user -u hc-rex-bridge -f`. Stop: `systemctl --user disable --now hc-rex-bridge`.
 
 The unit adds `~/.local/bin` to `PATH`; if `hc` or `rex` live elsewhere, edit its `Environment=PATH=`
-line. On macOS, run the script from a terminal or a launchd agent instead.
+line. If they are missing from `PATH` the service stops with an error instead of restarting forever.
+A user service stops when you log out; run `loginctl enable-linger $USER` to keep it running.
 
 ## Options
 
@@ -63,15 +65,16 @@ line. On macOS, run the script from a terminal or a launchd agent instead.
 | `--session NAME` | Rex session that holds the windows. Default `herdr`, or `$HERDREX_SESSION` if set. |
 | `--observe` | Read-only mirrors: you can watch, but keystrokes and resizes are not sent. The default lets you type. |
 | `--once` | Sync one time and exit. |
-| `--dry-run` | Print what would change without touching Rex. |
+| `--dry-run` | Print what would change without touching Rex, then exit. |
 
 For the service, set options on the `ExecStart=` line (or add `Environment=HERDREX_SESSION=name`)
 in `~/.config/systemd/user/hc-rex-bridge.service`, then run
 `systemctl --user daemon-reload && systemctl --user restart hc-rex-bridge`.
 
-After changing `--observe` or `--session`, stop the bridge, close the Rex session, then start the
-bridge again. It rebuilds the windows with the new settings. (A new `--session` leaves the old
-session behind; close that yourself.)
+After changing `--observe` or `--session`, stop the bridge, close the Rex session
+(`rex kill herdr`, using your session's name), then start the bridge again. It rebuilds the windows
+with the new settings. Existing windows keep the settings they were created with. A new `--session`
+leaves the old session behind; close that yourself.
 
 ## Good to know
 
@@ -90,8 +93,7 @@ session behind; close that yourself.)
 python3 -m unittest -v
 ```
 
-The tests cover the title, sorting and ordering logic. Everything that calls `hc` and `rex` is
-checked by running the bridge against real servers; `--dry-run` is a safe first step.
+The tests use stand-ins for `hc` and `rex`, so they need neither installed.
 
 ## License
 

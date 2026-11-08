@@ -174,5 +174,32 @@ class Reconcile(unittest.TestCase):
         self.assertEqual(sorted(fake.windows.values()), ["a / 1"])
 
 
+class Cli(unittest.TestCase):
+    def run_cli(self, *args, path=None):
+        import os, subprocess, sys
+        env = dict(os.environ)
+        if path is not None:
+            env["PATH"] = path
+        return subprocess.run([sys.executable, "-I", str(_path), *args],
+                              capture_output=True, text=True, env=env, timeout=20)
+
+    def test_missing_hc_and_rex_exit_78_without_traceback(self):
+        r = self.run_cli("--once", path="/nonexistent")
+        self.assertEqual(r.returncode, 78)
+        self.assertIn("not found on PATH", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_dry_run_implies_once(self):
+        # With stand-in hc/rex on PATH, --dry-run must exit by itself.
+        import os, stat, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for name, out in (("hc", '{"terminals": []}'), ("rex", '{"sessions": []}')):
+                f = os.path.join(d, name)
+                open(f, "w").write(f"#!/bin/sh\necho '{out}'\n")
+                os.chmod(f, os.stat(f).st_mode | stat.S_IXUSR)
+            r = self.run_cli("--dry-run", path=d + ":" + os.environ["PATH"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
