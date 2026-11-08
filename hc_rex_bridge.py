@@ -123,12 +123,16 @@ class Bridge:
         # by hand is not recreated until the bridge restarts. Starts empty, so a
         # restart rebuilds anything that went missing while the bridge was down.
         self.handled = set()
+        self.said_empty = False  # so "no live terminals" is logged once, not per event
 
     def reconcile(self):
         """Bring Rex in line with hc: close, rename, open, then sort windows."""
         group = self.args.session
         dry = self.args.dry_run
         hc = live_hc_terminals()
+        if not hc and not self.said_empty:
+            log("no live hc terminals; the Rex session appears with the first one")
+        self.said_empty = not hc
         wins = rex_windows(group)  # None when the group session does not exist
         present = wins or {}
         if wins is None:
@@ -160,7 +164,6 @@ class Bridge:
         for addr, t in sorted(hc.items()):
             if addr in self.state or addr in self.handled:
                 continue
-            self.handled.add(addr)
             name = display_name(addr, t)
             attach = ["hc", "attach"] + (["--observe"] if self.args.observe else []) + [addr]
             log(f"+ {group}: {name} [{addr}]")
@@ -176,7 +179,10 @@ class Bridge:
                 out = run("rex", "window", "new", "-s", group, name, "--focus=false",
                           "--cwd", cwd, "--json", "--", *attach)
                 wid = json.loads(out)["window_id"]
+            # Only now is this terminal "handled": if creating the window failed
+            # above, the next sync tries again.
             self.state[addr] = wid
+            self.handled.add(addr)
 
         self.handled.update(self.state)
         if not dry:

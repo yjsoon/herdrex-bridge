@@ -80,6 +80,7 @@ class FakeRex:
         self.windows = None         # {window_id: label}, or None = no session
         self.created = []           # addresses given a window, in order
         self._n = 0
+        self.fail_window_new = False  # make the next `rex window new` fail once
 
     def run(self, *cmd, check=True):
         attach = cmd[cmd.index("--") + 1:] if "--" in cmd else []
@@ -90,6 +91,9 @@ class FakeRex:
             self.created.append(attach[-1])
             return json.dumps({"initial_windows": [{"window_id": wid}]})
         if cmd[:3] == ("rex", "window", "new"):
+            if self.fail_window_new:
+                self.fail_window_new = False
+                raise RuntimeError("rex window new failed")
             self.windows[wid] = cmd[5]
             self.created.append(attach[-1])
             return json.dumps({"window_id": wid})
@@ -163,6 +167,27 @@ class Reconcile(unittest.TestCase):
         with fake.patch():
             b.reconcile()
         self.assertEqual(fake.created, ["t1", "t2"])
+
+    def test_failed_window_creation_is_retried(self):
+        fake = FakeRex({"t1": {"name": "a / 1"}})
+        b = make_bridge(fake)
+        with fake.patch():
+            b.reconcile()                      # session now exists
+            fake.terminals["t2"] = {"name": "a / 2"}
+            fake.fail_window_new = True
+            with self.assertRaises(RuntimeError):
+                b.reconcile()                  # t2's window fails to open
+            b.reconcile()                      # next sync must try t2 again
+        self.assertEqual(fake.created, ["t1", "t2"])
+
+    def test_no_terminals_creates_nothing_and_logs_once(self):
+        fake = FakeRex({})
+        b = make_bridge(fake)
+        with fake.patch(), mock.patch.object(bridge, "log") as log:
+            b.reconcile()
+            b.reconcile()
+        self.assertEqual(fake.created, [])
+        self.assertEqual(log.call_count, 1)
 
     def test_ended_terminal_window_is_closed(self):
         fake = self.fake()

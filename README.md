@@ -26,6 +26,12 @@ needs only the Python 3 standard library.
 ## Requirements
 
 - Python 3.8+, with `hc` and `rex` on your `PATH`
+- [herdr-core](https://herdr.dev/core/) (`hc`): `curl -fsSL https://releases.herdr.dev/core/install.sh | sh`
+  on macOS or Linux ([docs](https://herdr.dev/guide/), [source](https://github.com/herdrdev/herdr-core))
+- [Rex](https://superlogical.com): **in a staged beta at the time of writing (November 2026).** Access is by
+  [waitlist](https://superlogical.com/updates/public-testing-beginning), and only the macOS app is in
+  testing, though Rex servers also run on Linux. There is no public install guide yet, so follow what
+  you are sent.
 - Tested with hc 0.1.14 and Rex 0.1.0-preview.12 on Linux
 
 Both programs are young and the bridge reads their JSON output, so a new release may break it.
@@ -39,8 +45,9 @@ git clone https://github.com/yjsoon/herdrex-bridge && cd herdrex-bridge
 ./hc_rex_bridge.py             # sync, then keep syncing until Ctrl-C (use --once to sync and exit)
 ```
 
-Then open the `herdr` session in Rex (`rex ls` lists sessions). It is created as soon as one hc
-terminal is live. Without systemd (for example on macOS), this by-hand run is the way to use it: it logs to the
+Then open the `herdr` session in Rex (`rex ls` lists sessions). With no live hc terminal the bridge
+does nothing and the session does not exist yet; it appears with the first terminal. When the last
+terminal ends, the session stays, empty. Without systemd (for example on macOS), this by-hand run is the way to use it: it logs to the
 terminal and stops with Ctrl-C. No launchd file is provided and it is untested there.
 
 ## Run it as a service (systemd)
@@ -56,7 +63,25 @@ Logs: `journalctl --user -u hc-rex-bridge -f`. Stop: `systemctl --user disable -
 
 The unit adds `~/.local/bin` to `PATH`; if `hc` or `rex` live elsewhere, edit its `Environment=PATH=`
 line. If they are missing from `PATH` the service stops with an error instead of restarting forever.
-A user service stops when you log out; run `loginctl enable-linger $USER` to keep it running.
+On a remote or headless machine, everything stops at your last logout unless your user lingers. That
+covers the bridge, the hc core, and a Rex server run as a user service. Check with
+`loginctl show-user $USER -p Linger`; if it says `no`, run `sudo loginctl enable-linger $USER`.
+
+## Using it from another machine
+
+The point is to reach your hc terminals from a Rex client elsewhere. Run the bridge on the **host**,
+the machine where the hc terminals live. That host also needs `hc` and a Rex server, because the
+bridge talks to both locally. Your laptop only needs a Rex client.
+
+1. **On the host:** install `hc` and Rex (see Requirements), start the bridge (see above), and make
+   the Rex server reachable, for example `rex server tailscale on`, or start it with
+   `--extra-listen tailnet://:7297` as the author does. See `rex server start --help`.
+2. **On your laptop:** `rex hosts add box box.your-tailnet.ts.net`, then `rex -S box ls` should list
+   the `herdr` session. The Rex app lists the same hosts.
+
+Keep the whole stack running on the host (see [Run it as a service](#run-it-as-a-service-systemd)),
+not just the bridge. hc can also reach other machines over ssh (`hc machine add`); the bridge has
+not been tried with that, so run one bridge per host.
 
 ## Options
 

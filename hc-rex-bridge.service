@@ -1,5 +1,7 @@
 [Unit]
 Description=Mirror hc terminals as Rex windows
+# Start after your own Rex server unit, if you have one named rex.service; harmless if not.
+After=rex.service
 
 [Service]
 # %h is the user's home directory. See README.md for installation.
