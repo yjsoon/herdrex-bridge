@@ -5,6 +5,9 @@ After=rex.service
 
 [Service]
 # %h is the user's home directory. See README.md for installation.
+# Make sure the hc core is up first. It does nothing if the core is already running,
+# and the leading "-" lets the bridge start anyway if this fails.
+ExecStartPre=-/usr/bin/env hc server start
 # -I makes Python ignore PYTHON* variables and the current directory.
 ExecStart=/usr/bin/env python3 -I %h/.local/bin/hc-rex-bridge
 # hc and rex are usually installed in ~/.local/bin, which systemd does not put on PATH.
