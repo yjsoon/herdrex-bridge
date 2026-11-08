@@ -40,8 +40,8 @@ git clone https://github.com/yjsoon/herdrex-bridge && cd herdrex-bridge
 ```
 
 Then open the `herdr` session in Rex (`rex ls` lists sessions). It is created as soon as one hc
-terminal is live. Without systemd (for example on macOS), this by-hand run is the way to use it;
-no launchd file is provided and it is untested there.
+terminal is live. Without systemd (for example on macOS), this by-hand run is the way to use it: it logs to the
+terminal and stops with Ctrl-C. No launchd file is provided and it is untested there.
 
 ## Run it as a service (systemd)
 
@@ -67,9 +67,17 @@ A user service stops when you log out; run `loginctl enable-linger $USER` to kee
 | `--once` | Sync one time and exit. |
 | `--dry-run` | Print what would change without touching Rex, then exit. |
 
-For the service, set options on the `ExecStart=` line (or add `Environment=HERDREX_SESSION=name`)
-in `~/.config/systemd/user/hc-rex-bridge.service`, then run
-`systemctl --user daemon-reload && systemctl --user restart hc-rex-bridge`.
+For the service, set options in a drop-in so reinstalling the unit does not erase them. Run
+`systemctl --user edit hc-rex-bridge` and enter, for example:
+
+```ini
+[Service]
+ExecStart=
+ExecStart=/usr/bin/env python3 -I %h/.local/bin/hc-rex-bridge --observe --session work
+```
+
+Saving it restarts nothing, so then run `systemctl --user restart hc-rex-bridge`. To change only the
+session name, `Environment=HERDREX_SESSION=work` in the drop-in is enough.
 
 After changing `--observe` or `--session`, stop the bridge, close the Rex session
 (`rex kill herdr`, using your session's name), then start the bridge again. It rebuilds the windows

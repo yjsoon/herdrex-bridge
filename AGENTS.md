@@ -12,7 +12,7 @@ Do the read-only checks first, then ask, then act.
    - Session name: keep `herdr` or use another?
    - Overwrite the existing install, if you found one?
 3. Preview with `./hc_rex_bridge.py --dry-run` and show the user the output. It changes nothing and exits.
-4. Install by following "Run it as a service" in README.md. Put options on the installed unit's `ExecStart=` line before `enable --now`.
+4. Install by following "Run it as a service" in README.md. Set options in a drop-in (see "Options" in README.md), not in the installed unit, so a later reinstall does not erase them.
 5. Verify: `systemctl --user status hc-rex-bridge`, then `rex window ls -s <session> --json` should list one window per live hc terminal (`hc ls --json`).
 6. Never run the bridge in your own shell without `--once` or `--dry-run`: it runs until killed and will block you.
 7. Never run `hc kill`, delete `~/.local/state/hc-rex-bridge/windows.json`, or close the user's Rex sessions or windows without asking.
