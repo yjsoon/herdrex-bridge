@@ -116,9 +116,10 @@ class Bridge:
     def __init__(self, args):
         self.args = args
         self.state = load_state()  # {hc address: rex window id}
-        # Terminals mirrored before. A window the user closes by hand is not
-        # recreated until the bridge restarts.
-        self.handled = set(self.state)
+        # Terminals this run has already given a window. A window the user closes
+        # by hand is not recreated until the bridge restarts. Starts empty, so a
+        # restart rebuilds anything that went missing while the bridge was down.
+        self.handled = set()
 
     def reconcile(self):
         """Bring Rex in line with hc: close, rename, open, then sort windows."""
@@ -127,6 +128,10 @@ class Bridge:
         hc = live_hc_terminals()
         wins = rex_windows(group)  # None when the group session does not exist
         present = wins or {}
+        if wins is None:
+            # The whole group session is gone (closed by hand, Rex restarted, or
+            # --session changed): rebuild it with every live terminal.
+            self.handled.clear()
 
         # Forget windows that no longer exist in Rex (closed by hand or session gone).
         for addr, wid in list(self.state.items()):
@@ -170,6 +175,7 @@ class Bridge:
                 wid = json.loads(out)["window_id"]
             self.state[addr] = wid
 
+        self.handled.update(self.state)
         if not dry:
             save_state(self.state)
             if self.state:

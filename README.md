@@ -69,15 +69,18 @@ For the service, set options on the `ExecStart=` line (or add `Environment=HERDR
 in `~/.config/systemd/user/hc-rex-bridge.service`, then run
 `systemctl --user daemon-reload && systemctl --user restart hc-rex-bridge`.
 
-`--observe` and `--session` only affect windows created afterwards. To apply a change to
-everything, stop the bridge, close the Rex session, then start the bridge again.
+After changing `--observe` or `--session`, stop the bridge, close the Rex session, then start the
+bridge again. It rebuilds the windows with the new settings. (A new `--session` leaves the old
+session behind; close that yourself.)
 
 ## Good to know
 
 - **Interactive mode shares window size.** If another hc client such as the Herdr app is attached
   too, the clients can fight over the terminal's size. `--observe` avoids that.
 - **Closing a mirror only detaches.** The program keeps running in hc; end it with `hc kill <address>`.
-- **Closed windows stay closed** until the bridge restarts. This includes closing the whole Rex session.
+- **A window you close by hand stays closed** until the bridge restarts. Close the whole Rex session
+  instead and the bridge rebuilds it, with every live terminal, the next time hc reports a terminal
+  starting, ending or being renamed (or when the bridge restarts).
 - **State** lives in `$XDG_STATE_HOME/hc-rex-bridge/windows.json` (default `~/.local/state/...`) and
   maps terminals to windows. If you delete it, close the Rex session first or you will get duplicate windows.
 
