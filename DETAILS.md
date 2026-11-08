@@ -81,8 +81,12 @@ bridge talks to both locally. Your laptop only needs a Rex client.
    the `herdr` session. The Rex app lists the same hosts.
 
 Keep the whole stack running on the host (see [Run it as a service](#run-it-as-a-service-systemd)),
-not just the bridge. hc can also reach other machines over ssh (`hc machine add`); the bridge has
-not been tried with that, so run one bridge per host.
+not just the bridge. After a reboot the unit starts the hc core (`hc server start`), Rex needs its own
+service (for example a user unit that runs `rex server run`), and the bridge then rebuilds the windows.
+Terminals that were running come back as fresh shells; hc does not resume interrupted agent runs.
+
+hc can also reach other machines over ssh (`hc machine add`); the bridge has not been tried with
+that, so run one bridge per host.
 
 ## Options
 
